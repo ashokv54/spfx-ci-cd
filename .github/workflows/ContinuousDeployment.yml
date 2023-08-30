@@ -100,7 +100,7 @@ jobs:
 
     # Deploy app to a site collection
     - name: Deploy app to a site collection
-      uses: pnp/action-cli-deploy@v4
+      uses: pnp/action-cli-deploy@v3
       with:
         APP_FILE_PATH: output/${{ env.SPPKG_FILE_NAME }}
         SCOPE: sitecollection
