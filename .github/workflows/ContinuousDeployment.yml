@@ -90,6 +90,7 @@ jobs:
       uses: actions/download-artifact@v3
       with:
         name: output
+        path: output
 
     # CLI for Microsoft 365 login action
     - name: Login to tenant
