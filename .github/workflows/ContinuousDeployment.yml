@@ -29,6 +29,7 @@ jobs:
     # get current package version and path
     - name: get package version
       id: package_version
+      shell: pwsh
       run: |
         $packageVersion=node -p "require('./package.json').version"
         $packagePath=node -p "require('./config/package-solution.json').paths.zippedPackage"
@@ -40,6 +41,7 @@ jobs:
    
     - name: Increment patch number
       id: increment_patch
+      shell: pwsh
       run: |
         echo "${{ steps.package_version.outputs.packageVersion }}"
         $currentVersion ="${{ steps.package_version.outputs.packageVersion }}"
@@ -51,6 +53,7 @@ jobs:
         echo "::set-output name=new_package_solution_version::$newPackageSolutionVersion"
     
     - name: Update version
+      shell: pwsh
       run: |        
         (Get-Content -Path ./package.json -Raw) -replace '"version": "[^"]*"', '"version": "${{ steps.increment_patch.outputs.new_package_version }}"' | Set-Content -Path ./package.json        
         (Get-Content -Path ./config/package-solution.json -Raw) -replace '"version": "[^"]*"', '"version": "${{ steps.increment_patch.outputs.new_package_solution_version }}"' | Set-Content -Path ./config/package-solution.json
