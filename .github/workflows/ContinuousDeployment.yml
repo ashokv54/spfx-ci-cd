@@ -58,8 +58,9 @@ jobs:
         (Get-Content -Path ./package.json -Raw) -replace '"version": "[^"]*"', '"version": "${{ steps.increment_patch.outputs.new_package_version }}"' | Set-Content -Path ./package.json        
         (Get-Content -Path ./config/package-solution.json -Raw) -replace '"version": "[^"]*"', '"version": "${{ steps.increment_patch.outputs.new_package_solution_version }}"' | Set-Content -Path ./config/package-solution.json
         git config --global user.name '${{github.actor}}'
-        git config --global user.email 'vishal.shitole@live.com'
-        git commit -am "Version Bump"       
+        git config --global user.email '${{github.actor}}'
+        git remote set-url origin https://vishalshitole@github.com/vishalshitole/spfx-ci-cd
+        git commit -am "Version Bump"
         git push
     
     # gulp bundle and package solution
