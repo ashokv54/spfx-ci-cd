@@ -105,6 +105,7 @@ jobs:
         APP_FILE_PATH: output/${{ env.SPPKG_FILE_NAME }}
         SCOPE: sitecollection
         SITE_COLLECTION_URL: ${{ env.SITE_COLLECTION_URL }}
+        OVERWRITE: true
 
     # Print the id of the app
     - name: Get the id of the app deployed
