@@ -2,11 +2,13 @@ name: Microsoft Graph Task
 
 on: [pull_request]
 
-jobs:
-  create-task:
-    runs-on: ubuntu-latest
+jobs:  
+  create-task:    
+    runs-on: ubuntu-latest    
     name: Create Task
+    
     steps:
+    # Create planner task using Microsoft Graph
     - name: Create a task for the user
       uses: vishalshitole/ms-graph-create-task@v1
       with:

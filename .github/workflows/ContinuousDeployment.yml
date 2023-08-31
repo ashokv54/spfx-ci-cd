@@ -99,8 +99,9 @@ jobs:
         ADMIN_USERNAME:  ${{ secrets.ADMIN_USERNAME }}
         ADMIN_PASSWORD:  ${{ secrets.ADMIN_PASSWORD }}
 
-    # Deploy app to a site collection
+    # Deploy app to a site collection app catalog
     - name: Deploy app to a site collection
+      id: climicrosoft365deploy
       uses: pnp/action-cli-deploy@v3
       with:
         APP_FILE_PATH: output/${{ env.SPPKG_FILE_NAME }}
