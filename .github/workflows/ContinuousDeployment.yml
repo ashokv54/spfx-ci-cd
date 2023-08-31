@@ -1,6 +1,9 @@
 name: SPFx Solution CICD
 
-on: [push]
+on:
+  pull_request_target:
+    types:
+      - closed
 
 # Set the name of the sppkg file
 env:
@@ -9,7 +12,7 @@ env:
 
 jobs:
   build:
-    if: "!contains(github.event.commits[0].message, '[Version Bump]')"
+    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     
     steps:
