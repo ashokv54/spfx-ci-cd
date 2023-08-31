@@ -3,7 +3,7 @@
   "solution": {
     "name": "spfx-ci-cd-client-side-solution",
     "id": "5a474b42-3071-448e-bad5-7a35b8dac26d",
-    "version": "0.0.11.0",
+    "version": "1.0.0.0",
     "includeClientSideAssets": true,
     "skipFeatureDeployment": true,
     "isDomainIsolated": false,
