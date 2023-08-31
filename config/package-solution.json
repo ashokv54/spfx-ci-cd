@@ -3,7 +3,7 @@
   "solution": {
     "name": "spfx-ci-cd-client-side-solution",
     "id": "5a474b42-3071-448e-bad5-7a35b8dac26d",
-    "version": "1.0.0.0",
+    "version": "0.0.8.0",
     "includeClientSideAssets": true,
     "skipFeatureDeployment": true,
     "isDomainIsolated": false,
@@ -30,7 +30,7 @@
         "title": "spfx-ci-cd Feature",
         "description": "The feature that activates elements of the spfx-ci-cd solution.",
         "id": "cf5e26c6-9806-4848-9aac-709c21f52f5b",
-        "version": "1.0.0.0"
+        "version": "0.0.8.0"
       }
     ]
   },
@@ -38,3 +38,10 @@
     "zippedPackage": "solution/spfx-ci-cd.sppkg"
   }
 }
+
+
+
+
+
+
+

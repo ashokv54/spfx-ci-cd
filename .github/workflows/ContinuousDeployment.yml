@@ -1,0 +1,113 @@
+name: SPFx Solution CICD
+
+on: [push]
+
+# Set the name of the sppkg file
+env:
+  SPPKG_FILE_NAME: 'spfx-ci-cd.sppkg'
+  SITE_COLLECTION_URL: 'https://vgssoft.sharepoint.com/sites/testthree'
+
+jobs:
+  build:
+    if: "!contains(github.event.commits[0].message, '[Version Bump]')"
+    runs-on: ubuntu-latest
+    
+    steps:
+    # Checkout code
+    - name: Checkout code
+      uses: actions/checkout@v3
+      
+    # Setup node.js runtime
+    - name: Use Node.js 16.x
+      uses: actions/setup-node@v3
+      with:
+        node-version: 16.x
+    
+    # npm install
+    - name: Run npm install
+      run: npm install
+
+    # get current package version and path
+    - name: get package version
+      id: package_version
+      shell: pwsh
+      run: |
+        $packageVersion=node -p "require('./package.json').version"
+        $packagePath=node -p "require('./config/package-solution.json').paths.zippedPackage"
+        $packageName= $packagePath.split('/')[1]
+        echo "Output [$packageName]"
+        echo "::set-output name=packageVersion::$packageVersion"
+        echo "::set-output name=packagePath::$packagePath"
+        echo "::set-output name=packageName::$packageName"
+   
+    - name: Increment patch number
+      id: increment_patch
+      shell: pwsh
+      run: |
+        echo "${{ steps.package_version.outputs.packageVersion }}"
+        $currentVersion ="${{ steps.package_version.outputs.packageVersion }}"
+        $versionParts = $currentVersion.split('.')
+        $patchNumber = [int]$versionParts[2] + 1
+        $newPackageVersion = "{0}.{1}.{2}" -f $versionParts[0], $versionParts[1], $patchNumber
+        $newPackageSolutionVersion = "{0}.{1}.{2}.{3}" -f $versionParts[0], $versionParts[1], $patchNumber, 0
+        echo "::set-output name=new_package_version::$newPackageVersion"
+        echo "::set-output name=new_package_solution_version::$newPackageSolutionVersion"
+    
+    - name: Update version
+      shell: pwsh
+      run: |        
+        (Get-Content -Path ./package.json -Raw) -replace '"version": "[^"]*"', '"version": "${{ steps.increment_patch.outputs.new_package_version }}"' | Set-Content -Path ./package.json        
+        (Get-Content -Path ./config/package-solution.json -Raw) -replace '"version": "[^"]*"', '"version": "${{ steps.increment_patch.outputs.new_package_solution_version }}"' | Set-Content -Path ./config/package-solution.json
+        git config --global user.name '${{github.actor}}'
+        git config --global user.email '${{github.actor}}'
+        git commit -am "Version Bump"
+        git push
+    
+    # gulp bundle and package solution
+    - name: Bundle and package
+      run: |
+        gulp bundle --ship
+        gulp package-solution --ship    
+    
+    # Upload artifacts (sppkg file)
+    - name: Upload artifact (sppkg file)
+      uses: actions/upload-artifact@v3
+      with:
+        name: output
+        path: sharepoint/solution/${{ env.SPPKG_FILE_NAME }}
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+    # Checkout code
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    # Download package (sppkg file)
+    - name: Download pacakge (sppkg file)
+      uses: actions/download-artifact@v3
+      with:
+        name: output
+        path: output
+
+    # CLI for Microsoft 365 login action
+    - name: Login to tenant
+      uses: pnp/action-cli-login@v2
+      with:
+        ADMIN_USERNAME:  ${{ secrets.ADMIN_USERNAME }}
+        ADMIN_PASSWORD:  ${{ secrets.ADMIN_PASSWORD }}
+
+    # Deploy app to a site collection
+    - name: Deploy app to a site collection
+      uses: pnp/action-cli-deploy@v3
+      with:
+        APP_FILE_PATH: output/${{ env.SPPKG_FILE_NAME }}
+        SCOPE: sitecollection
+        SITE_COLLECTION_URL: ${{ env.SITE_COLLECTION_URL }}
+        OVERWRITE: true
+
+    # Print the id of the app
+    - name: Get the id of the app deployed
+      run: echo "The id of the app deployed is ${{ steps.climicrosoft365deploy.outputs.APP_ID }}"
