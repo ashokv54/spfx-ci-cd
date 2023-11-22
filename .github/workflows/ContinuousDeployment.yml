@@ -4,6 +4,7 @@ on:
   pull_request_target:
     types:
       - closed
+  workflow_dispatch:
 
 # Set the name of the sppkg file
 env:
