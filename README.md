@@ -9,7 +9,7 @@ Short summary on functionality and used technologies.
 ## Used SharePoint Framework Version
 
 ![version](https://img.shields.io/badge/version-1.17.3-green.svg)
-secret=qwerty@123
+secret=
 ## Applies to
 
 - [SharePoint Framework](https://aka.ms/spfx)
