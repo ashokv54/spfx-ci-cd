@@ -1,0 +1,29 @@
+name: Pull request workflow for MAA
+
+on:
+  pull_request:
+    branches:
+      - '*'
+    paths:
+      - 'MAA/**'
+  workflow_dispatch:
+
+jobs:
+  Build:
+    runs-on: self-hosted
+    steps:
+    - uses: actions/checkout@v3
+    - run: ls 
+    - name: Use Node.js 14.17.6
+      uses: actions/setup-node@v3
+      with:
+        node-version: 14.17.6
+    - run: npm config set strict-ssl false
+    - name: npm install
+      run: |
+        cd "MAA"
+        npm install
+    - name : npm build
+      run: |
+        cd "MAA"
+        npm run gulp-build
