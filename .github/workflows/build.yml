@@ -1,0 +1,117 @@
+name: SPFx build for MAA
+
+on:
+  workflow_dispatch:
+    inputs:
+      Deploy-to-Dev:
+        type: boolean
+        description: Deployment to DEV
+
+env:
+  DIRECTORY: "MAA"
+  SPPKG_FILE_NAME: "maa"
+  ARTIFACT_URL: "https://xxxx/artifactory/gxx"
+
+jobs:
+  Build:
+    runs-on: self-hosted
+    outputs:
+      version: ${{ steps.getversion.outputs.packageVersion }}
+    steps:
+    - name: get code files
+      uses: actions/checkout@v3
+      
+    - name: Output GitHub context
+      run: echo "${{ toJSON(github) }}"
+
+    - name: List Files
+      run: ls
+      working-directory: ${{ env.DIRECTORY }} 
+
+    - name: Use Node.js 14.17.6
+      uses: actions/setup-node@v3
+      with:
+        node-version: 14.17.6
+    # - run: npm config set strict-ssl false
+    - name: npm install
+      run: |
+        npm install
+      working-directory: ${{ env.DIRECTORY }}
+    - name : npm build
+      run: |
+        npm run gulp-build
+      working-directory: ${{ env.DIRECTORY }}
+    - name : npm ship
+      run: |
+        npm run gulp-ship
+      working-directory: ${{ env.DIRECTORY }}
+    - name : npm package
+      run: |
+        npm run gulp-package
+      working-directory: ${{ env.DIRECTORY }}
+
+    - name: Get Package Version and Name
+      id: getversion
+      run: |
+        packageVersion=$(node -p "require('./package.json').version")
+        # packagePath=$(node -p "require('./config/package-solution.json').paths.zippedPackage")
+        # packageName=$(echo $packagePath | cut -d '/' -f 2)
+        # echo "Output [$packageName]"
+        
+        echo "packageVersion=$packageVersion" >> $GITHUB_ENV
+        echo "packageVersion=$packageVersion" >> "$GITHUB_OUTPUT"
+        # echo "packagePath=$packagePath" >> $GITHUB_ENV
+        # echo "packageName=$packageName" >> $GITHUB_ENV
+      working-directory: ${{ env.DIRECTORY }}
+
+    - name: Display Package Version
+      run: echo "Package Version - ${{ env.packageVersion }}"
+
+    - name: Append version and build number
+      run: |
+        
+        cp ${{ env.SPPKG_FILE_NAME }}.sppkg ${{ env.SPPKG_FILE_NAME }}-${{ env.packageVersion }}.${{ github.run_number }}.sppkg
+        ls
+      working-directory: "${{ env.DIRECTORY }}/sharepoint/solution"
+
+    - name: print branch name
+      run: echo "Branch Name - ${{ github.ref_name }}"
+
+    - name: Artifactory upload
+      run: |
+        curl -H "X-JFrog-Art-Api: ${{ secrets.JF_ACCESS_API }}" -X PUT "${{ env.ARTIFACT_URL }}/${{ env.SPPKG_FILE_NAME }}/${{ env.SPPKG_FILE_NAME }}-${{ env.packageVersion }}.${{ github.run_number }}.sppkg;version=${{ env.packageVersion }};branch=${{ github.ref_name }};buildnumber=${{ github.run_number }};buildid=${{ github.run_id }}" -T ${{ env.SPPKG_FILE_NAME }}-${{ env.packageVersion }}.${{ github.run_number }}.sppkg -H "X-Checksum-Md5: $(md5sum ${{ env.SPPKG_FILE_NAME }}-${{ env.packageVersion }}.${{ github.run_number }}.sppkg | cut -d' ' -f1)" -H "X-Checksum-Sha1: $(sha1sum ${{ env.SPPKG_FILE_NAME }}-${{ env.packageVersion }}.${{ github.run_number }}.sppkg | cut -d' ' -f1)" -H "X-Checksum-Sha256: $(sha256sum $${{ env.SPPKG_FILE_NAME }}-${{ env.packageVersion }}.${{ github.run_number }}.sppkg | cut -d' ' -f1)" -H "X-Properties: version=${{ env.packageVersion }},branch=${{ github.ref_name }},buildnumber=${{ github.run_number }},buildid=${{ github.run_id }}" -H "X-Artifactory-Deploy-Override: true" --fail --silent --show-error
+      working-directory: "${{ env.DIRECTORY }}/sharepoint/solution"
+  Deploy:
+    environment: DEV
+    runs-on: ubuntu-latest
+    needs: Build
+    if: github.event.inputs.Deploy-to-Dev == 'true'
+    env:
+      VERSION: ${{needs.Build.outputs.version}}
+    steps:
+
+      - name: Artifact Download
+        run: |
+          curl -H "X-JFrog-Art-Api:${{ secrets.JF_ACCESS_API }}" -O "${{ env.ARTIFACT_URL }}/${{ env.SPPKG_FILE_NAME }}/${{ env.SPPKG_FILE_NAME }}-$VERSION.${{ github.run_number }}".sppkg
+          cp ${{ env.SPPKG_FILE_NAME }}-$VERSION.${{ github.run_number }}.sppkg ${{ env.SPPKG_FILE_NAME }}.sppkg
+      - name: list files
+        run: ls -l
+      - name: Use Node.js 18
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+        # cache: 'npm'
+      - name: npm install cli-microsoft365
+        run: npm install -g @pnp/cli-microsoft365
+    # - run: m365
+      - name: Connecting to SharePoint Online
+        run: |
+          m365 login -t password -u ${{ secrets.SP_USERNAME}} -p ${{ secrets.SP_PASSWORD}}
+      - name: Adding the Solution Package to the App Catalog & Deploy
+        run: |
+          echo "Adding the Solution Package to the App Catalog"
+          output=$(m365 spo app add --filePath ${{ env.SPPKG_FILE_NAME }}.sppkg --appCatalogScope sitecollection --appCatalogUrl ${{ vars.SP_ENV_URL }} --overwrite)
+          uniqueId=$(echo "$output" | grep -oP '"UniqueId": "\K[^"]+')
+          echo "Deploying UniqueId: $uniqueId"
+          m365 spo app deploy --id $uniqueId --appCatalogScope sitecollection --appCatalogUrl ${{ vars.SP_ENV_URL }}
+      - run: m365 spo app list -s sitecollection -u ${{ vars.SP_ENV_URL }}
