@@ -1,0 +1,56 @@
+name: Deployment for MAA
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number'
+        required: true
+      buildNumber:
+        description: 'Build number'
+        required: true
+      environment:
+        description: 'Env: DEV, UAT, PROD'
+        required: true
+
+env:
+
+  SPPKG_FILE_NAME: "maa"
+  ARTIFACT_URL: "https://x/artifactory/gx"
+
+jobs:
+  Deploy:
+    environment: ${{ github.event.inputs.environment }}
+    runs-on: ubuntu-latest
+    steps:
+    - name: Print Version and Build Number
+      run: |
+        echo "Version: ${{ github.event.inputs.version }}"
+        echo "Build Number: ${{ github.event.inputs.buildNumber }}"
+    - name: Artifactory Download
+      run: |
+        curl -H "X-JFrog-Art-Api:${{ secrets.JF_ACCESS_API }}" -O "${{ env.ARTIFACT_URL }}/${{ env.SPPKG_FILE_NAME }}/${{ env.SPPKG_FILE_NAME }}-${{ github.event.inputs.version }}.${{ github.event.inputs.buildNumber }}".sppkg
+
+    - name: list files
+      run: |
+        cp ${{ env.SPPKG_FILE_NAME }}-${{ github.event.inputs.version }}.${{ github.event.inputs.buildNumber }}.sppkg ${{ env.SPPKG_FILE_NAME }}.sppkg
+        ls -l
+    - name: Use Node.js 18
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        # cache: 'npm'
+    - name: npm install cli-microsoft365
+      run: npm install -g @pnp/cli-microsoft365
+    # - run: m365
+    - name: Connecting to SharePoint Online
+      run: |
+        m365 login -t password -u ${{ secrets.SP_USERNAME}} -p ${{ secrets.SP_PASSWORD}}
+    - name: Adding the Solution Package to the App Catalog & Deploy
+      run: |
+        echo "Adding the Solution Package to the App Catalog"
+        output=$(m365 spo app add --filePath ${{ env.SPPKG_FILE_NAME }}.sppkg --appCatalogScope sitecollection --appCatalogUrl ${{ vars.SP_ENV_URL }} --overwrite)
+        uniqueId=$(echo "$output" | grep -oP '"UniqueId": "\K[^"]+')
+        echo "Deploying UniqueId: $uniqueId"
+        m365 spo app deploy --id $uniqueId --appCatalogScope sitecollection --appCatalogUrl ${{ vars.SP_ENV_URL }}
+        # m365 spo app install --id $uniqueId --appCatalogScope sitecollection --siteUrl ${{ vars.SP_ENV_URL }}
+    - run: m365 spo app list -s sitecollection -u ${{ vars.SP_ENV_URL }}
